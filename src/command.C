@@ -1283,6 +1283,8 @@ rxvt_term::mouse_report (XButtonEvent &ev)
   int x, y;
   int code = 32;
 
+  if (priv_modes & PrivMode_ExtMouseSgr) code = 0;
+
   x = Pixel2Col (ev.x) + 1;
   y = Pixel2Row (ev.y) + 1;
 
@@ -1296,11 +1298,18 @@ rxvt_term::mouse_report (XButtonEvent &ev)
       code += 32;
     }
 
-  if (MEvent.button == AnyButton)
+  if (!(priv_modes & PrivMode_ExtMouseSgr) && MEvent.button == AnyButton)
     button_number = 3;
   else
     {
-      button_number = MEvent.button - Button1;
+      if (ev.type == MotionNotify) {
+        if (ev.state & Button1Mask) button_number = 0;
+        else if (ev.state & Button2Mask) button_number = 1;
+        else if (ev.state & Button3Mask) button_number = 2;
+        else return;
+      } else {
+        button_number = ev.button - Button1;
+      }
       /* add 0x3D for wheel events, like xterm does */
       if (button_number >= 3)
         button_number += 64 - 3;
@@ -1350,7 +1359,13 @@ rxvt_term::mouse_report (XButtonEvent &ev)
 #endif
 
 #if ENABLE_FRILLS
-  if (priv_modes & PrivMode_ExtMouseRight)
+  if (priv_modes & PrivMode_ExtMouseSgr)
+    tt_printf ("\033[<%d;%d;%d%c",
+              code + button_number + key_state,
+              x,
+              y,
+              (ev.type == ButtonRelease ? 'm' : 'M'));
+  else if (priv_modes & PrivMode_ExtMouseRight)
     tt_printf ("\033[%d;%d;%dM",
               code + button_number + key_state,
               x,
@@ -2876,7 +2891,7 @@ rxvt_term::process_csi_seq ()
                 scr_soft_reset ();
 
                 static const int pm_h[] = { 7, 25 };
-                static const int pm_l[] = { 1, 3, 4, 5, 6, 9, 66, 1000, 1001, 1005, 1015, 1049 };
+                static const int pm_l[] = { 1, 3, 4, 5, 6, 9, 66, 1000, 1001, 1002, 1003, 1005, 1006, 1015, 1049 };
 
                 process_terminal_mode ('h', 0, ecb_array_length (pm_h), pm_h);
                 process_terminal_mode ('l', 0, ecb_array_length (pm_l), pm_l);
@@ -3703,6 +3718,7 @@ rxvt_term::process_terminal_mode (int mode, int priv ecb_unused, unsigned int na
 #if ENABLE_FRILLS
                   { 1004, PrivMode_FocusEvent },
                   { 1005, PrivMode_ExtModeMouse },
+                  { 1006, PrivMode_ExtMouseSgr },
 #endif
                   { 1010, PrivMode_TtyOutputInh }, // rxvt extension
                   { 1011, PrivMode_Keypress }, // rxvt extension
